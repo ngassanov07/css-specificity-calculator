@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CSS Specificity Calculator</title>
+  <meta name="description" content="Minimal CSS specificity calculator — live, accurate, and pretty." />
+  <style>
+    :root{
+      --bg1:#03040a; /* near-black */
+      --bg2:#041227; /* dark blue */
+      --accent:#60a5fa; /* light blue */
+      --muted:rgba(255,255,255,0.65);
+      --glass: rgba(255,255,255,0.04);
+      --radius:14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+    }
+    /* Page layout */
+    html,body{height:100%;}
+    body{
+      margin:0;
+      min-height:100%;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(160deg,var(--bg1) 10%, var(--bg2) 60%);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:36px;
+    }
+
+    /* Card */
+    .app{
+      width:960px;
+      max-width:96vw;
+      border-radius:var(--radius);
+      padding:22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+      box-shadow: 0 10px 30px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+      backdrop-filter: blur(6px) saturate(120%);
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 20px;
+    }
+
+    header{display:flex;align-items:center;gap:14px}
+    header h1{font-size:18px;margin:0;letter-spacing:0.2px}
+    header p{margin:0;color:var(--muted);font-size:13px}
+
+    /* Left panel */
+    .left{padding-right:6px}
+    label{display:block;color:var(--muted);font-size:13px;margin-bottom:8px}
+
+    .input-wrap{
+      display:flex;gap:10px;align-items:center;
+    }
+
+    input[type="text"], textarea{
+      width:100%;
+      font-family:var(--mono);
+      font-size:15px;
+      padding:12px 14px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.04);
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+      color:inherit;
+      outline:none;
+    }
+
+    textarea{min-height:90px; resize: vertical; width: 550px;}
+
+    .controls{display:flex;gap:8px;margin-top:8px}
+    button{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.06);
+      color:inherit;padding:8px 12px;border-radius:9px;cursor:pointer;font-weight:600
+    }
+    button.primary{background:linear-gradient(90deg,var(--accent),#4f46e5);border:none;color:#041227}
+
+    /* Right panel */
+    .panel{
+      padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .result-list{display:flex;flex-direction:column;gap:12px}
+
+    .result{
+      padding:10px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.02);
+    }
+
+    .spec-row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+    .spec-values{font-family:var(--mono);font-size:14px;color:var(--muted)}
+
+    .bars{display:flex;gap:6px;margin-top:10px}
+    .bar{flex:1;height:10px;border-radius:6px;background:rgba(255,255,255,0.04);overflow:hidden}
+    .seg{height:100%;display:block}
+    .seg.a{background:#f97316} /* orange */
+    .seg.b{background:#fb7185} /* pink */
+    .seg.c{background:#60a5fa} /* blue */
+    .seg.d{background:#93c5fd} /* light */
+
+    .tokens{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
+    .token{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.02);font-family:var(--mono);font-size:13px}
+    .token.id{border-left:4px solid #fb7185}
+    .token.cls{border-left:4px solid #60a5fa}
+    .token.attr{border-left:4px solid #a78bfa}
+    .token.elem{border-left:4px solid #93c5fd}
+    .token.pseudo{border-left:4px solid #f97316}
+
+    footer{grid-column:1 / -1;margin-top:12px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;align-items:center}
+
+    /* Responsive */
+    @media (max-width:880px){
+      .app{grid-template-columns:1fr;}
+      .panel{order:-1}
+    }
+
+  </style>
+</head>
+<body>
+  <main class="app" role="main" aria-labelledby="title">
+    <div class="left">
+      <header>
+        <div>
+          <h1 id="title">CSS Specificity Calculator</h1>
+          <p>Type any selector (comma-separated). Live breakdown & visual score.</p>
+        </div>
+      </header>
+
+      <form id="form" onsubmit="return false;" aria-label="Selector form">
+        <label for="selector">Selector (supports multiple, comma-separated)</label>
+        <textarea id="selector" placeholder="e.g. main#content section.article[data-type=\"featured\"] > div.card.highlighted + p.note::first-letter::after" aria-describedby="help"></textarea>
+        <div class="controls">
+          <button type="button" id="copyBtn">Copy result</button>
+          <button type="button" id="clearBtn">Clear</button>
+          <div style="flex:1"></div>
+          <button type="button" id="exampleBtn" class="primary">Try example</button>
+        </div>
+      </form>
+
+      <div style="margin-top:12px;color:var(--muted);font-size:13px" id="help">Specificity format: <code style="font-family:var(--mono)">(a,b,c,d)</code> where <strong>a</strong>=inline, <strong>b</strong>=IDs, <strong>c</strong>=classes/attrs/pseudo-classes, <strong>d</strong>=elements/pseudo-elements.</div>
+
+    </div>
+
+    <aside class="panel" aria-labelledby="resultsTitle">
+      <h3 id="resultsTitle" style="margin:0 0 8px 0">Results</h3>
+      <div id="results" class="result-list" aria-live="polite"></div>
+
+      <div style="margin-top:12px;color:var(--muted);font-size:13px">Tip: separate multiple selectors with a comma to see each specificity. Later rule wins if specificity ties and it's lower in the stylesheet.</div>
+    </aside>
+
+    <footer>
+      <div>Made by ChatGPT mini-project — polished, minimal UI.</div>
+      <div>⟡ live · responsive · accessible</div>
+    </footer>
+  </main>
+
+  <script>
+// Utility: split selector list by commas but ignore commas inside parentheses
+function splitSelectors(input){
+  const out = [];
+  let cur = '';
+  let depth = 0;
+  for(let ch of input){
+    if(ch === '(') depth++;
+    if(ch === ')') depth = Math.max(0, depth-1);
+    if(ch === ',' && depth === 0){ out.push(cur.trim()); cur = ''; continue; }
+    cur += ch;
+  }
+  if(cur.trim()) out.push(cur.trim());
+  return out.filter(Boolean);
+}
+
+// Main specificity calculation
+function calculateSpecificity(selector){
+  // Counts: a (inline), b (ids), c (classes/attrs/pseudo-classes), d (elements/pseudo-elements)
+  let a = 0, b = 0, c = 0, d = 0;
+
+  // Split by combinators: space, >, +, ~  (keeps simple selectors)
+  const parts = selector.split(/\s*(?:>|\+|~=|\s)\s*/).filter(Boolean);
+
+  parts.forEach(part => {
+    part = part.trim();
+    if(!part) return;
+
+    // Count ID selectors (#id)
+    const ids = part.match(/#[\w-]+/g);
+    if(ids) b += ids.length;
+
+    // Count class selectors (.class)
+    const classes = part.match(/\.[\w-]+/g);
+    if(classes) c += classes.length;
+
+    // Count attribute selectors [attr], [attr=\"x\"]
+    const attrs = part.match(/\[[^\]]+\]/g);
+    if(attrs) c += attrs.length;
+
+    // Count pseudo-elements (::name) and old single-colon pseudo-elements
+    const pseudoElements = part.match(/::[\w-]+|:(?:before|after|first-letter|first-line|selection)/gi);
+    if(pseudoElements) d += pseudoElements.length;
+
+    // Count pseudo-classes (single-colon but not the pseudo-elements above)
+    const pseudoClasses = (part.match(/:[\w-]+(?:\([^)]*\))?/g) || []).filter(pc => {
+      const lower = pc.toLowerCase();
+      if(lower.startsWith('::')) return false;
+      if(/:(before|after|first-letter|first-line|selection)/.test(lower)) return false;
+      return true;
+    });
+    if(pseudoClasses) c += pseudoClasses.length;
+
+    // Count element/tag name — appears at the start of the simple selector if present.
+    const tagMatch = part.match(/^[a-zA-Z][a-zA-Z0-9-]*/);
+    if(tagMatch && tagMatch[0] !== '*') d += 1;
+  });
+
+  return {a,b,c,d};
+}
+
+function formatSpec(s){ return `(${s.a},${s.b},${s.c},${s.d})`; }
+
+// Tokenize selector for visual tokens
+function tokenizeSimple(selector){
+  const tokens = selector.split(/(\s+|>|\+|~)/).filter(t => t && !/^\s+$/.test(t));
+  const out = [];
+  tokens.forEach(tok => {
+    if(/^>|\+|~$/.test(tok)) { out.push({text: tok, kind: 'comb'}); return; }
+    const parts = tok.match(/::[\w-]+|:[\w-]+(?:\([^)]*\))?|\[[^\]]+\]|#[\w-]+|\.[\w-]+|[a-zA-Z][a-zA-Z0-9-]*|\*/g) || [tok];
+    parts.forEach(p => {
+      const kind = p.startsWith('#') ? 'id'
+                 : p.startsWith('.') ? 'cls'
+                 : p.startsWith('::') || /:(?:before|after|first-letter|first-line|selection)/i.test(p) ? 'pseudo'
+                 : p.startsWith(':') ? 'pseudo'
+                 : p.startsWith('[') ? 'attr'
+                 : /^[a-zA-Z]/.test(p) ? 'elem'
+                 : 'other';
+      out.push({text:p, kind});
+    });
+  });
+  return out;
+}
+
+// Render a single selector result card
+function renderResult(selector){
+  const s = calculateSpecificity(selector);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'result';
+
+  const top = document.createElement('div');
+  top.className = 'spec-row';
+
+  const left = document.createElement('div');
+  left.innerHTML = `<div style=\"font-family:var(--mono);font-size:13px;\">${escapeHtml(selector)}</div><div style=\"color:var(--muted);font-size:12px;margin-top:4px\">${formatSpec(s)}</div>`;
+
+  const right = document.createElement('div');
+  right.className = 'spec-values';
+  right.textContent = `b:${s.b}  c:${s.c}  d:${s.d}`;
+
+  top.appendChild(left);
+  top.appendChild(right);
+  wrapper.appendChild(top);
+
+  // Bars visualization
+  const bars = document.createElement('div');
+  bars.className = 'bars';
+
+  const weight = (s.a*10000) + (s.b*1000) + (s.c*100) + (s.d*10) || 1;
+
+  const segA = document.createElement('span'); segA.className='seg a'; segA.style.width = ((s.a*10000)/weight*100).toFixed(2) + '%';
+  const segB = document.createElement('span'); segB.className='seg b'; segB.style.width = ((s.b*1000)/weight*100).toFixed(2) + '%';
+  const segC = document.createElement('span'); segC.className='seg c'; segC.style.width = ((s.c*100)/weight*100).toFixed(2) + '%';
+  const segD = document.createElement('span'); segD.className='seg d'; segD.style.width = ((s.d*10)/weight*100).toFixed(2) + '%';
+
+  const barWrap = document.createElement('div'); barWrap.className='bar';
+  barWrap.appendChild(segA); barWrap.appendChild(segB); barWrap.appendChild(segC); barWrap.appendChild(segD);
+  bars.appendChild(barWrap);
+  wrapper.appendChild(bars);
+
+  // tokens breakdown
+  const tokens = document.createElement('div'); tokens.className='tokens';
+  const toks = tokenizeSimple(selector);
+  toks.forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'token ' + (t.kind === 'id' ? 'id' : t.kind === 'cls' ? 'cls' : t.kind === 'attr' ? 'attr' : t.kind === 'elem' ? 'elem' : t.kind === 'pseudo' ? 'pseudo' : '');
+    span.textContent = t.text;
+    tokens.appendChild(span);
+  });
+
+  wrapper.appendChild(tokens);
+
+  return wrapper;
+}
+
+// Escape for HTML
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Main UI wiring
+const selectorEl = document.getElementById('selector');
+const resultsEl = document.getElementById('results');
+const copyBtn = document.getElementById('copyBtn');
+const clearBtn = document.getElementById('clearBtn');
+const exampleBtn = document.getElementById('exampleBtn');
+
+function update(){
+  const raw = selectorEl.value.trim();
+  resultsEl.innerHTML = '';
+  if(!raw) return resultsEl.innerHTML = '<div style=\"color:var(--muted);font-size:13px\">Type a selector to see results.</div>';
+
+  const list = splitSelectors(raw);
+  list.forEach(sel => {
+    try{
+      const node = renderResult(sel);
+      resultsEl.appendChild(node);
+    }catch(e){
+      const err = document.createElement('div'); err.className='result'; err.textContent = 'Error parsing selector: ' + sel;
+      resultsEl.appendChild(err);
+      console.error(e);
+    }
+  });
+}
+
+// debounce for typing
+let t = null;
+selectorEl.addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(update, 160); });
+
+copyBtn.addEventListener('click', ()=>{
+  const raw = selectorEl.value.trim();
+  const list = splitSelectors(raw);
+  const lines = list.map(s => `${s} -> ${formatSpec(calculateSpecificity(s))}`);
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>{
+    const prev = copyBtn.textContent;
+    copyBtn.textContent = 'Copied!'; setTimeout(()=>copyBtn.textContent=prev,900);
+  }).catch(()=>{ copyBtn.textContent='Copy failed'; setTimeout(()=>copyBtn.textContent='Copy result',900); });
+});
+
+clearBtn.addEventListener('click', ()=>{ selectorEl.value=''; update(); selectorEl.focus(); });
+
+exampleBtn.addEventListener('click', ()=>{
+  selectorEl.value = 'main#content section.article[data-type=\"featured\"] > div.card.highlighted + p.note::first-letter::after, ul#menu li.active > a:hover';
+  update(); selectorEl.focus();
+});
+
+// initial
+selectorEl.value = 'div a\n#header .nav > li.active > a:hover';
+update();
+
+</script>
+</body>
+</html>
