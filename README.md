@@ -10,9 +10,7 @@ Type one or more selectors (comma-separated) and the app gives a live breakdown 
 ## Files
 
 ```
-index.html   - Main single-page UI
-style.css    - Styles (dark gradient, responsive)
-script.js    - Specificity calculation & UI logic
+index.html   - Main single-page UI, Styles (dark gradient, responsive), Specificity calculation & UI logic
 README.md    - This file
 ```
 
